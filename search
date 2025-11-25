@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Recherche – Éo</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="back" href="index.html">←</a>
+    <h1 class="brand">Recherche</h1>
+  </header>
+
+  <main class="container">
+    <input id="q" class="search-input" placeholder="Rechercher un message…" aria-label="Recherche">
+    <div id="results" class="results"></div>
+  </main>
+
+  <script>
+    // Même mock que sur index (ou charger via fetch plus tard)
+    const messages = [
+      {id:1,titre:"Marché de Noël – Ce samedi",extract:"Artisans locaux…"},
+      {id:2,titre:"Collecte de jouets",extract:"Déposez vos jouets…"},
+      {id:3,titre:"Coupure d'eau demain matin",extract:"Intervention technique…"}
+    ];
+
+    const q = document.getElementById('q');
+    const results = document.getElementById('results');
+
+    function render(list) {
+      results.innerHTML = '';
+      if (list.length === 0) {
+        results.innerHTML = '<p style="color:#666">Aucun résultat</p>';
+        return;
+      }
+      list.forEach(m => {
+        const d = document.createElement('div');
+        d.className = 'result';
+        d.textContent = m.titre;
+        d.addEventListener('click', () => {
+          // retour simple : ouvrir index et trouver l'item (améliorable)
+          window.location.href = 'index.html';
+        });
+        results.appendChild(d);
+      });
+    }
+
+    q.addEventListener('input', () => {
+      const val = q.value.trim().toLowerCase();
+      if (!val) return render([]);
+      render(messages.filter(m => m.titre.toLowerCase().includes(val)));
+    });
+  </script>
+</body>
+</html>
