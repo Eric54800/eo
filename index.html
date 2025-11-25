@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Éo – Crieur Public Local</title>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+        }
+
+        header {
+            background: #ffffff;
+            padding: 16px;
+            border-bottom: 1px solid #ddd;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        header h1 {
+            font-size: 20px;
+            margin: 0;
+        }
+
+        .search-button {
+            float: right;
+            font-size: 22px;
+            cursor: pointer;
+            margin-top: -28px;
+        }
+
+        .container {
+            padding: 16px;
+        }
+
+        /* Cartes du fil */
+        .card {
+            background: white;
+            padding: 16px;
+            border-radius: 10px;
+            margin-bottom: 14px;
+            box-shadow: 0px 2px 5px rgba(0,0,0,0.07);
+            cursor: pointer;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .card-source {
+            font-size: 13px;
+            color: #666;
+        }
+        .card-extract {
+            margin-top: 8px;
+            font-size: 15px;
+            color: #444;
+        }
+
+        /* Modal détail */
+        .modal-background {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.4);
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .modal {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .close {
+            float: right;
+            cursor: pointer;
+            font-size: 24px;
+        }
+
+        .modal h2 {
+            margin-top: 0;
+        }
+
+        .action-button {
+            display: block;
+            margin-top: 20px;
+            background: #007bff;
+            padding: 12px;
+            border-radius: 10px;
+            text-align: center;
+            color: white;
+            text-decoration: none;
+        }
+
+    </style>
+</head>
+
+<body>
+
+<header>
+    <h1>Éo — Crieur public</h1>
+    <span class="search-button">🔍</span>
+</header>
+
+<div class="container">
+    <!-- Exemple de carte -->
+    <div class="card" onclick="openModal()">
+        <div class="card-title">Marché de Noël – Village</div>
+        <div class="card-source">Par la Mairie • Aujourd’hui 10:00</div>
+        <div class="card-extract">Venez découvrir les artisans locaux et animations familiales...</div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">Travaux rue des Écoles</div>
+        <div class="card-source">Service Technique • 22 nov</div>
+        <div class="card-extract">La circulation sera alternée pendant trois jours pour permettre...</div>
+    </div>
+</div>
+
+<!-- Modal Détail -->
+<div class="modal-background" id="modal">
+    <div class="modal">
+        <span class="close" onclick="closeModal()">×</span>
+
+        <h2>Marché de Noël – Village</h2>
+        <p class="card-source">Publié par la Mairie • Aujourd’hui 10:00</p>
+
+        <p>
+            Venez découvrir les artisans locaux, les animations pour enfants, 
+            et déguster des produits régionaux sur la place du village.  
+            L’événement se déroulera de 10h à 18h.
+        </p>
+
+        <a href="#" class="action-button">📅 Ajouter à l'agenda</a>
+    </div>
+</div>
+
+<script>
+    function openModal() {
+        document.getElementById("modal").style.display = "flex";
+    }
+    function closeModal() {
+        document.getElementById("modal").style.display = "none";
+    }
+</script>
+
+</body>
+</html>
