@@ -59,7 +59,7 @@ body {
 }
 
 .logo {
-    height: 45px; /* LOGO PLUS GRAND */
+    height: 45px; 
 }
 
 /* Barre de recherche */
@@ -173,7 +173,7 @@ body {
     margin-bottom: 15px;
 }
 
-/* NOUVEAU: Conteneur des pièces jointes (Bas à gauche) */
+/* Conteneur des pièces jointes (Bas à gauche) */
 .attachments-container {
     position: absolute;
     bottom: 15px; /* Aligné avec la poubelle en bas */
@@ -187,7 +187,6 @@ body {
 .attachment-item {
     display: flex;
     align-items: center;
-    /* Utilisation de la couleur du header, semi-transparente pour le fond de la carte */
     background-color: rgba(42, 73, 54, 0.7); 
     border: 1px solid var(--accent-green);
     padding: 2px 5px;
@@ -294,38 +293,7 @@ body {
     opacity: 0.8;
 }
 
-/* Styles des pièces jointes dans la Modale */
-.modal-attachments {
-    border-top: 1px dotted rgba(254, 244, 229, 0.4);
-    border-bottom: 1px dotted rgba(254, 244, 229, 0.4);
-    padding: 10px 0;
-    margin-bottom: 15px;
-}
-
-.modal-attachments h4 {
-    color: var(--chalk-white);
-    font-size: 1em;
-    margin: 0 0 5px 0;
-    font-family: 'Kalam', cursive;
-    text-shadow: 
-        1px 1px 0 rgba(254, 244, 229, 0.4), 
-        -1px -1px 1px rgba(254, 244, 229, 0.2);
-}
-
-.modal-attachments ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-.modal-attachments li a {
-    color: var(--accent-green);
-    text-decoration: underline;
-    font-size: 0.9em;
-    display: block;
-    margin-bottom: 3px;
-    font-family: 'Lato', sans-serif;
-}
+/* NOUVEAU: Style retiré pour modal-attachments (plus utilisé) */
 
 
 .modal-close {
