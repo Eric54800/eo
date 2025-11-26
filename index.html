@@ -10,7 +10,7 @@
 </head>
 <body>
   <header class="site-header">
-        <img src="logo.png" alt="Logo Éo" class="logo">
+    <img src="logo.png" alt="Logo Éo" class="logo">
   </header>
 
   <main id="app" class="container">
@@ -35,29 +35,50 @@
 
     // --- Utilitaires DOM ---
     const feed = document.getElementById('feed');
+    
+    // NOUVELLE FONCTION: Mappage de l'extension de fichier à une icône
+    function getFileIcon(filename) {
+        const ext = filename.split('.').pop().toLowerCase();
+        switch(ext) {
+            case 'pdf': return '📄'; // Document
+            case 'jpg':
+            case 'jpeg':
+            case 'png': return '🖼️'; // Image
+            case 'doc':
+            case 'docx': return '✍️'; // Word
+            default: return '📎'; // Générique
+        }
+    }
 
     function createCard(msg) {
       const el = document.createElement('article');
       el.className = 'card';
     
       // Logique pour les pièces jointes (affichage du trombone)
-      const attachmentCount = msg.attachments.length;
-      let attachmentIcon = '';
-      if (attachmentCount > 0) {
-          attachmentIcon = `<span class="attachment-count">📎 (${attachmentCount})</span>`;
+      let attachmentsHtml = '';
+      if (msg.attachments && msg.attachments.length > 0) {
+          attachmentsHtml = '<div class="attachments-container">';
+          // Afficher jusqu'à 2 fichiers
+          msg.attachments.slice(0, 2).forEach(file => {
+              const icon = getFileIcon(file);
+              attachmentsHtml += `
+                  <div class="attachment-item" onclick="alert('Téléchargement de ${file}...'); event.stopPropagation();">
+                      <span class="attachment-icon">${icon}</span>
+                      <span class="attachment-name">${escapeHtml(file)}</span>
+                  </div>
+              `;
+          });
+          attachmentsHtml += '</div>';
       }
     
       el.innerHTML = `
         <h3 class="card-title">${escapeHtml(msg.titre)}</h3>
-        <div class="card-meta">
-           Publié par ${escapeHtml(msg.source)} • ${escapeHtml(msg.date)} 
-           ${attachmentIcon}
-        </div>
+        <div class="card-meta">Publié par ${escapeHtml(msg.source)} • ${escapeHtml(msg.date)}</div>
         <div class="card-time">${escapeHtml(msg.horaire)}</div>
 
         <p class="card-extract">${escapeHtml(msg.contenu)}</p>
         
-                <button class="calendar-icon" aria-label="Ajouter à l'agenda" data-id="${msg.id}">🗓️</button>
+        ${attachmentsHtml}                 <button class="calendar-icon" aria-label="Ajouter à l'agenda" data-id="${msg.id}">🗓️</button>
 
                 <button class="delete-icon" aria-label="Supprimer l'annonce" data-id="${msg.id}">🗑️</button>
       `;
@@ -115,7 +136,8 @@
             attachmentsHtml += '<h4>Pièces jointes :</h4>';
             attachmentsHtml += '<ul>';
             attachmentsToShow.forEach(file => {
-                 attachmentsHtml += `<li><a href="#" onclick="alert('Téléchargement de ${file}...'); return false;">⬇️ ${file}</a></li>`;
+                 // Les fichiers dans la modale sont cliquables
+                 attachmentsHtml += `<li><a href="#" onclick="alert('Téléchargement de ${file}...'); return false;">⬇️ ${getFileIcon(file)} ${file}</a></li>`;
             });
             attachmentsHtml += '</ul></div>';
         }
