@@ -36,17 +36,17 @@
     // --- Utilitaires DOM ---
     const feed = document.getElementById('feed');
     
-    // NOUVELLE FONCTION: Mappage de l'extension de fichier à une icône
+    // Mappage de l'extension de fichier à une icône
     function getFileIcon(filename) {
         const ext = filename.split('.').pop().toLowerCase();
         switch(ext) {
-            case 'pdf': return '📄'; // Document
+            case 'pdf': return '📄'; 
             case 'jpg':
             case 'jpeg':
-            case 'png': return '🖼️'; // Image
+            case 'png': return '🖼️'; 
             case 'doc':
-            case 'docx': return '✍️'; // Word
-            default: return '📎'; // Générique
+            case 'docx': return '✍️'; 
+            default: return '📎'; 
         }
     }
 
@@ -61,6 +61,7 @@
           // Afficher jusqu'à 2 fichiers
           msg.attachments.slice(0, 2).forEach(file => {
               const icon = getFileIcon(file);
+              // Lien direct cliquable depuis la carte
               attachmentsHtml += `
                   <div class="attachment-item" onclick="alert('Téléchargement de ${file}...'); event.stopPropagation();">
                       <span class="attachment-icon">${icon}</span>
@@ -127,21 +128,8 @@
 
     // --- Détail accessible (simple modal) ---
     function openDetail(msg) {
-        // Construction de la liste des pièces jointes pour la modale
-        let attachmentsHtml = '';
-        if (msg.attachments && msg.attachments.length > 0) {
-            const attachmentsToShow = msg.attachments.slice(0, 2); 
-            
-            attachmentsHtml = '<div class="modal-attachments">';
-            attachmentsHtml += '<h4>Pièces jointes :</h4>';
-            attachmentsHtml += '<ul>';
-            attachmentsToShow.forEach(file => {
-                 // Les fichiers dans la modale sont cliquables
-                 attachmentsHtml += `<li><a href="#" onclick="alert('Téléchargement de ${file}...'); return false;">⬇️ ${getFileIcon(file)} ${file}</a></li>`;
-            });
-            attachmentsHtml += '</ul></div>';
-        }
-
+        // La logique des pièces jointes est supprimée ici car elles sont visibles sur la carte
+        
       const modal = document.createElement('div');
       modal.className = 'modal-overlay';
       modal.innerHTML = `
@@ -150,8 +138,6 @@
           <h2>${escapeHtml(msg.titre)}</h2>
           <div class="card-meta">Publié par ${escapeHtml(msg.source)} • ${escapeHtml(msg.date)}</div>
           
-            ${attachmentsHtml}
-            
           <div class="modal-body">${escapeHtml(msg.contenu)}</div>
         </div>
       `;
