@@ -3,7 +3,7 @@
 /* ==================================== */
 :root {
     --chalkboard-green: #354230; 
-    --header-color: #2A4936; /* COULEUR HEADER (R=42, G=73, B=54) */
+    --header-color: #2A4936; 
     --chalk-white: #FEF4E5;      
     --accent-green: #A5D6A7;     
     --padding-base: 15px;
@@ -43,7 +43,7 @@ body {
 /* 📣 En-tête (Header) */
 /* ==================================== */
 .site-header {
-    background-color: var(--header-color); /* Couleur spécifique */
+    background-color: var(--header-color); 
     
     position: fixed;
     top: 0;
@@ -52,7 +52,7 @@ body {
     height: 50px;
     display: flex;
     align-items: center;
-    justify-content: center; /* Centre le logo */
+    justify-content: center; 
     padding: 0 var(--padding-base);
     border-bottom: 1px solid rgba(254, 244, 229, 0.2); 
     z-index: 10;
@@ -115,6 +115,8 @@ body {
     background-color: transparent; 
     border: 1px dotted var(--chalk-white); 
     padding: var(--padding-base);
+    /* Augmentation du padding bas pour les pièces jointes */
+    padding-bottom: 70px; 
     margin-bottom: var(--padding-base);
     cursor: pointer;
     transition: all 0.4s ease-out; 
@@ -138,7 +140,6 @@ body {
     color: var(--chalk-white);
     font-size: 1.2em;
     font-weight: 700;
-    /* Espace pour l'icône calendrier en haut à droite */
     margin: 0 80px 5px 0; 
 }
 
@@ -146,14 +147,6 @@ body {
     color: rgba(254, 244, 229, 0.6); 
     font-size: 0.8em;
     margin-bottom: 10px;
-}
-
-/* Icône de pièce jointe dans la carte (Feed) */
-.attachment-count {
-    font-size: 0.9em;
-    font-weight: bold;
-    color: var(--accent-green);
-    margin-left: 10px;
 }
 
 /* Affichage de l'heure */
@@ -170,12 +163,55 @@ body {
 .card-extract {
     color: var(--chalk-white);
     font-size: 0.9em;
-    margin: 0;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
+    /* Raccourcir le texte pour laisser de la place au conteneur de pièces jointes */
+    height: 3em; 
     overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2; 
+    -webkit-box-orient: vertical;
+    margin-bottom: 15px;
 }
+
+/* NOUVEAU: Conteneur des pièces jointes (Bas à gauche) */
+.attachments-container {
+    position: absolute;
+    bottom: 15px; /* Aligné avec la poubelle en bas */
+    left: 15px; /* En bas à gauche */
+    display: flex;
+    flex-direction: column; /* Superposition verticale */
+    z-index: 5;
+    max-width: 60%; 
+}
+
+.attachment-item {
+    display: flex;
+    align-items: center;
+    /* Utilisation de la couleur du header, semi-transparente pour le fond de la carte */
+    background-color: rgba(42, 73, 54, 0.7); 
+    border: 1px solid var(--accent-green);
+    padding: 2px 5px;
+    border-radius: 3px;
+    margin-top: 3px; 
+    font-size: 0.8em;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.attachment-icon {
+    font-size: 1.2em;
+    margin-right: 5px;
+    color: var(--accent-green);
+}
+
+.attachment-name {
+    color: var(--chalk-white);
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 
 /* Icône Ajouter à l'Agenda (Haut à droite) */
 .calendar-icon {
