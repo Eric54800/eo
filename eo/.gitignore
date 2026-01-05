@@ -1,0 +1,26 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Virtualenv
+env/
+.venv/
+
+# Django
+db.sqlite3
+media/
+
+# Fichiers de test locaux
+pj*.txt
+test*.txt
+test.exe
+
+# Front / builds locaux
+eo-web/
+
+# IDE
+.vscode/
+.idea/

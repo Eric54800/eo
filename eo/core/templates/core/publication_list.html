@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container" style="max-width: 850px; margin: auto; padding: 1rem;">
+    
+    <!-- Titre de l'organisation -->
+    <header style="text-align: center; margin-bottom: 2rem;">
+        <h1 style="font-size: 2rem; font-weight: bold;">
+            {{ organisation.nom }}
+        </h1>
+
+        {% if organisation.couverture %}
+        <img 
+            src="{{ organisation.couverture.url }}" 
+            alt="Image de couverture de {{ organisation.nom }}" 
+            style="max-width: 100%; border-radius: 8px; margin-top: 1rem;"
+        >
+        {% endif %}
+
+        {% if organisation.description %}
+        <p style="margin-top: 1rem; font-size: 1.1rem;">
+            {{ organisation.description }}
+        </p>
+        {% endif %}
+    </header>
+
+    <h2 style="font-size: 1.6rem; margin-bottom: 1rem;">Publications</h2>
+
+    {% if publications %}
+        <ul style="list-style: none; padding: 0;">
+            {% for pub in publications %}
+            <li style="margin-bottom: 1.5rem; padding: 1rem; border: 1px solid #ccc; border-radius: 8px;">
+                
+                <h3 style="font-size: 1.3rem; margin-bottom: .5rem;">
+                    {{ pub.titre }}
+                </h3>
+
+                <p style="margin: 0.3rem 0; color: #666;">
+                    Publié le {{ pub.date_publication|date:"d/m/Y H:i" }}
+                    {% if pub.lieu %}
+                        — {{ pub.lieu }}
+                    {% endif %}
+                </p>
+
+                {% if pub.type_publication %}
+                <p>
+                    <strong>Type :</strong> {{ pub.get_type_publication_display }}
+                </p>
+                {% endif %}
+
+                {% if pub.contenu %}
+                <p>{{ pub.contenu|linebreaks }}</p>
+                {% endif %}
+
+                {% if pub.piece_jointe %}
+                <p>
+                    <a href="{{ pub.piece_jointe.url }}" 
+                       aria-label="Télécharger la pièce jointe {{ pub.titre }}">
+                        📎 Télécharger la pièce jointe
+                    </a>
+                </p>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>Aucune publication pour le moment.</p>
+    {% endif %}
+</div>
+{% endblock %}
