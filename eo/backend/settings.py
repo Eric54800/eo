@@ -35,6 +35,10 @@ ALLOWED_HOSTS = [
     if host.strip()
 ]
 
+# Le site Next.js relaie le domaine HTTPS public vers l'API Django locale.
+USE_X_FORWARDED_HOST = True
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
 # In local development, allow direct access from devices on the same LAN
 # without forcing manual ALLOWED_HOSTS updates every time the machine IP changes.
 if DEBUG:
