@@ -721,6 +721,16 @@ class PublicWebPushSubscriptionTests(TestCase):
         self.assertEqual(subscription.organisation, self.organisation)
         self.assertTrue(subscription.active)
 
+    def test_proxy_normalized_url_without_trailing_slash_is_accepted(self):
+        response = self.client.post(
+            "/api/public/push-subscriptions",
+            self.payload,
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(WebPushSubscription.objects.count(), 1)
+
     def test_resubscribing_updates_existing_endpoint(self):
         self.client.post("/api/public/push-subscriptions/", self.payload, format="json")
         self.payload["subscription"]["keys"]["auth"] = "new-auth-secret"

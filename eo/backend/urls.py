@@ -48,6 +48,11 @@ urlpatterns = [
         PublicWebPushSubscriptionView.as_view(),
         name="public-web-push-subscriptions",
     ),
+    path(
+        "api/public/push-subscriptions",
+        PublicWebPushSubscriptionView.as_view(),
+        name="public-web-push-subscriptions-no-slash",
+    ),
     path("api/", include(router.urls)),
 ]
 
