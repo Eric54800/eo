@@ -8,6 +8,15 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.AlterField(
+            model_name="notificationdispatch",
+            name="provider",
+            field=models.CharField(
+                choices=[("internal", "Internal"), ("web_push", "Web Push")],
+                default="internal",
+                max_length=50,
+            ),
+        ),
         migrations.CreateModel(
             name="WebPushSubscription",
             fields=[

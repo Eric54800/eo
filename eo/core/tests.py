@@ -2,7 +2,7 @@ from datetime import timedelta
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
@@ -758,3 +758,81 @@ class PublicWebPushSubscriptionTests(TestCase):
 
         self.assertEqual(response.status_code, 204)
         self.assertFalse(WebPushSubscription.objects.exists())
+
+
+class WebPushDispatchTests(TestCase):
+    @override_settings(
+        WEB_PUSH_ENABLED=True,
+        WEB_PUSH_VAPID_PRIVATE_KEY="test-private-key",
+        WEB_PUSH_VAPID_SUBJECT="mailto:push@example.test",
+    )
+    @patch("pywebpush.webpush")
+    def test_dispatch_sends_limited_payload_to_active_source_subscriptions(self, webpush):
+        from core.services.notifications import (
+            record_publication_published_dispatch,
+            send_web_push_dispatch,
+        )
+
+        organisation = Organisation.objects.create(nom="Source", slug="source")
+        publication = Publication.objects.create(
+            organisation=organisation,
+            type=Publication.TYPE_INFORMATION,
+            status=Publication.STATUS_PUBLISHED,
+            titre="Information utile",
+            contenu="A" * 300,
+        )
+        subscription = WebPushSubscription.objects.create(
+            organisation=organisation,
+            endpoint="https://push.example.test/subscription/abc",
+            p256dh="public-key",
+            auth="auth-secret",
+        )
+        WebPushSubscription.objects.create(
+            organisation=organisation,
+            endpoint="https://push.example.test/subscription/inactive",
+            p256dh="inactive-key",
+            auth="inactive-auth",
+            active=False,
+        )
+        dispatch = record_publication_published_dispatch(publication)
+
+        send_web_push_dispatch(dispatch)
+
+        dispatch.refresh_from_db()
+        webpush.assert_called_once()
+        call = webpush.call_args.kwargs
+        self.assertEqual(call["subscription_info"]["endpoint"], subscription.endpoint)
+        payload = __import__("json").loads(call["data"])
+        self.assertEqual(payload["title"], "Nouvelle criée · Source")
+        self.assertLessEqual(len(payload["body"]), 120)
+        self.assertEqual(payload["url"], f"/app?source=source&criee={publication.id}")
+        self.assertEqual(dispatch.provider, NotificationDispatch.PROVIDER_WEB_PUSH)
+        self.assertEqual(dispatch.status, NotificationDispatch.STATUS_SENT)
+        self.assertEqual(dispatch.payload["sent_count"], 1)
+
+    @override_settings(
+        WEB_PUSH_ENABLED=False,
+        WEB_PUSH_VAPID_PRIVATE_KEY="test-private-key",
+    )
+    @patch("pywebpush.webpush")
+    def test_dispatch_remains_recorded_when_web_push_is_disabled(self, webpush):
+        from core.services.notifications import (
+            record_publication_published_dispatch,
+            send_web_push_dispatch,
+        )
+
+        organisation = Organisation.objects.create(nom="Source", slug="source")
+        publication = Publication.objects.create(
+            organisation=organisation,
+            type=Publication.TYPE_INFORMATION,
+            status=Publication.STATUS_PUBLISHED,
+            titre="Information utile",
+            contenu="Contenu",
+        )
+        dispatch = record_publication_published_dispatch(publication)
+
+        send_web_push_dispatch(dispatch)
+
+        dispatch.refresh_from_db()
+        webpush.assert_not_called()
+        self.assertEqual(dispatch.status, NotificationDispatch.STATUS_RECORDED)

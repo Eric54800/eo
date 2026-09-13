@@ -263,8 +263,10 @@ class NotificationDispatch(models.Model):
     )
 
     PROVIDER_INTERNAL = "internal"
+    PROVIDER_WEB_PUSH = "web_push"
     PROVIDER_CHOICES = (
         (PROVIDER_INTERNAL, "Internal"),
+        (PROVIDER_WEB_PUSH, "Web Push"),
     )
 
     organisation = models.ForeignKey(

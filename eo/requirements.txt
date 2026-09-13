@@ -7,3 +7,4 @@ Pillow==11.3.0
 PyJWT==2.8.0
 sqlparse==0.5.1
 stripe==11.6.0
+pywebpush==2.0.3

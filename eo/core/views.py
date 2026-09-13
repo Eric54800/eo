@@ -36,7 +36,10 @@ from .serializers import (
     SubscriptionSerializer,
 )
 from .permissions import IsOrganisationAdmin
-from .services.notifications import record_publication_published_dispatch
+from .services.notifications import (
+    record_publication_published_dispatch,
+    send_web_push_dispatch,
+)
 
 User = get_user_model()
 
@@ -250,7 +253,8 @@ class PublicationViewSet(viewsets.ModelViewSet):
 
         publication = serializer.save(organisation=org)
         if publication.status == Publication.STATUS_PUBLISHED:
-            record_publication_published_dispatch(publication)
+            dispatch = record_publication_published_dispatch(publication)
+            send_web_push_dispatch(dispatch)
 
     def perform_update(self, serializer):
         publication = self.get_object()
@@ -270,7 +274,8 @@ class PublicationViewSet(viewsets.ModelViewSet):
             previous_status != Publication.STATUS_PUBLISHED
             and publication.status == Publication.STATUS_PUBLISHED
         ):
-            record_publication_published_dispatch(publication)
+            dispatch = record_publication_published_dispatch(publication)
+            send_web_push_dispatch(dispatch)
 
     @action(
         detail=True,

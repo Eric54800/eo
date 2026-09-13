@@ -195,3 +195,4 @@ STRIPE_CANCEL_URL = os.getenv(
 # Web Push. La clé privée reste exclusivement côté backend.
 WEB_PUSH_VAPID_PRIVATE_KEY = os.getenv("WEB_PUSH_VAPID_PRIVATE_KEY", "")
 WEB_PUSH_VAPID_SUBJECT = os.getenv("WEB_PUSH_VAPID_SUBJECT", "mailto:contact@example.invalid")
+WEB_PUSH_ENABLED = os.getenv("WEB_PUSH_ENABLED", "false").lower() in ("1", "true", "yes")
