@@ -13,6 +13,7 @@ from core.models import (
     Organisation,
     Publication,
     Subscription,
+    WebPushSubscription,
 )
 
 
@@ -691,3 +692,69 @@ class StructureWorkflowTests(TestCase):
             ).count(),
             1,
         )
+
+
+class PublicWebPushSubscriptionTests(TestCase):
+    def setUp(self):
+        self.organisation = Organisation.objects.create(
+            nom="Source Push",
+            slug="source-push",
+        )
+        self.client = APIClient()
+        self.payload = {
+            "organisation_slug": self.organisation.slug,
+            "subscription": {
+                "endpoint": "https://push.example.test/subscription/abc",
+                "keys": {"p256dh": "public-key", "auth": "auth-secret"},
+            },
+        }
+
+    def test_anonymous_browser_can_subscribe_to_public_source(self):
+        response = self.client.post(
+            "/api/public/push-subscriptions/",
+            self.payload,
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        subscription = WebPushSubscription.objects.get()
+        self.assertEqual(subscription.organisation, self.organisation)
+        self.assertTrue(subscription.active)
+
+    def test_resubscribing_updates_existing_endpoint(self):
+        self.client.post("/api/public/push-subscriptions/", self.payload, format="json")
+        self.payload["subscription"]["keys"]["auth"] = "new-auth-secret"
+
+        response = self.client.post(
+            "/api/public/push-subscriptions/",
+            self.payload,
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(WebPushSubscription.objects.count(), 1)
+        self.assertEqual(WebPushSubscription.objects.get().auth, "new-auth-secret")
+
+    def test_subscription_rejects_non_https_endpoint(self):
+        self.payload["subscription"]["endpoint"] = "http://push.example.test/abc"
+
+        response = self.client.post(
+            "/api/public/push-subscriptions/",
+            self.payload,
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(WebPushSubscription.objects.exists())
+
+    def test_anonymous_browser_can_unsubscribe_from_one_source(self):
+        self.client.post("/api/public/push-subscriptions/", self.payload, format="json")
+
+        response = self.client.delete(
+            "/api/public/push-subscriptions/",
+            self.payload,
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse(WebPushSubscription.objects.exists())

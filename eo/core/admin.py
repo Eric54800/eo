@@ -9,6 +9,7 @@ from .models import (
     Publication,
     PublicationAttachment,
     Subscription,
+    WebPushSubscription,
 )
 
 
@@ -22,6 +23,18 @@ def badge(text, color):
         color,
         text
     )
+
+
+@admin.register(WebPushSubscription)
+class WebPushSubscriptionAdmin(admin.ModelAdmin):
+    list_display = ("organisation", "active", "updated_at", "endpoint_preview")
+    list_filter = ("active", "organisation")
+    search_fields = ("organisation__nom", "organisation__slug", "endpoint")
+    readonly_fields = ("created_at", "updated_at")
+
+    @admin.display(description="Point de terminaison")
+    def endpoint_preview(self, obj):
+        return f"{obj.endpoint[:70]}…" if len(obj.endpoint) > 70 else obj.endpoint
 
 
 # ---------------------------------------------------------------------------

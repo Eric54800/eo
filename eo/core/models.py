@@ -304,3 +304,30 @@ class NotificationDispatch(models.Model):
 
     def __str__(self):
         return f"{self.organisation.slug} - {self.event_type} - {self.status}"
+
+
+class WebPushSubscription(models.Model):
+    organisation = models.ForeignKey(
+        "Organisation",
+        on_delete=models.CASCADE,
+        related_name="web_push_subscriptions",
+    )
+    endpoint = models.TextField()
+    p256dh = models.CharField(max_length=512)
+    auth = models.CharField(max_length=255)
+    user_agent = models.CharField(max_length=500, blank=True)
+    active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=("organisation", "endpoint"),
+                name="unique_web_push_endpoint_per_organisation",
+            )
+        ]
+        ordering = ("-updated_at",)
+
+    def __str__(self):
+        return f"{self.organisation.slug} - {self.endpoint[:48]}"

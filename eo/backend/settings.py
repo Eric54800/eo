@@ -170,6 +170,9 @@ REST_FRAMEWORK = {
     # ✅ Pagination pro
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,
+    'DEFAULT_THROTTLE_RATES': {
+        'web_push_subscription': '60/hour',
+    },
 }
 # Upload limits (10 MB)
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
@@ -188,3 +191,7 @@ STRIPE_CANCEL_URL = os.getenv(
     "STRIPE_CANCEL_URL",
     "http://127.0.0.1:3000/organisations/{slug}/administration?billing=cancel",
 )
+
+# Web Push. La clé privée reste exclusivement côté backend.
+WEB_PUSH_VAPID_PRIVATE_KEY = os.getenv("WEB_PUSH_VAPID_PRIVATE_KEY", "")
+WEB_PUSH_VAPID_SUBJECT = os.getenv("WEB_PUSH_VAPID_SUBJECT", "mailto:contact@example.invalid")

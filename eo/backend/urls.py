@@ -9,6 +9,7 @@ from core.billing_views import (
     CustomerPortalSessionView,
     StripeWebhookView,
 )
+from core.push_views import PublicWebPushSubscriptionView
 from core.views import (
     OrganisationViewSet,
     PublicationViewSet,
@@ -42,6 +43,11 @@ urlpatterns = [
     path("api/billing/checkout-session/", CheckoutSessionView.as_view(), name="billing-checkout-session"),
     path("api/billing/customer-portal/", CustomerPortalSessionView.as_view(), name="billing-customer-portal"),
     path("api/billing/webhook/", StripeWebhookView.as_view(), name="billing-webhook"),
+    path(
+        "api/public/push-subscriptions/",
+        PublicWebPushSubscriptionView.as_view(),
+        name="public-web-push-subscriptions",
+    ),
     path("api/", include(router.urls)),
 ]
 
