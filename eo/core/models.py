@@ -25,6 +25,22 @@ class Organisation(models.Model):
 
     email = models.EmailField(blank=True)
     telephone = models.CharField(max_length=50, blank=True)
+    presentation = models.TextField(blank=True)
+    public_email = models.EmailField(blank=True)
+    public_image = models.ImageField(upload_to="org_public/", blank=True, null=True)
+    public_cover_image = models.ImageField(
+        upload_to="org_public/covers/",
+        blank=True,
+        null=True,
+    )
+    public_avatar_image = models.ImageField(
+        upload_to="org_public/avatars/",
+        blank=True,
+        null=True,
+    )
+    cover_position_x = models.PositiveSmallIntegerField(default=50)
+    cover_position_y = models.PositiveSmallIntegerField(default=50)
+    horaires = models.TextField(blank=True)
 
     date_creation = models.DateTimeField(auto_now_add=True)
     periode_gratuite_jours = models.PositiveIntegerField(default=90)
@@ -43,6 +59,20 @@ class Organisation(models.Model):
 
     def __str__(self):
         return self.nom
+
+
+class OrganisationPublicDocument(models.Model):
+    organisation = models.ForeignKey(
+        "core.Organisation",
+        on_delete=models.CASCADE,
+        related_name="public_documents",
+    )
+    file = models.FileField(upload_to="org_public_documents/")
+    display_name = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.display_name or self.file.name
 
 
 # ---------------------------------------------------------------------------
@@ -134,7 +164,29 @@ class Membership(models.Model):
 
     def __str__(self):
         return f"{self.user} → {self.organisation} ({self.role})"
-    
+
+
+class MembershipInvitationInterest(models.Model):
+    organisation = models.OneToOneField(
+        "core.Organisation",
+        on_delete=models.CASCADE,
+        related_name="member_invitation_interest",
+    )
+    click_count = models.PositiveIntegerField(default=0)
+    last_requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="membership_invitation_interests",
+    )
+    first_requested_at = models.DateTimeField(auto_now_add=True)
+    last_requested_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.organisation.slug} - {self.click_count} clic(s)"
+
+
 class PublicationAttachment(models.Model):
     publication = models.ForeignKey(
         "core.Publication",
@@ -167,6 +219,8 @@ class Subscription(models.Model):
 
     trial_end = models.DateTimeField(null=True, blank=True)
     current_period_end = models.DateTimeField(null=True, blank=True)
+    cancel_at_period_end = models.BooleanField(default=False)
+    cancel_at = models.DateTimeField(null=True, blank=True)
 
     # On les met maintenant, même si on n'utilise pas Stripe tout de suite
     stripe_customer_id = models.CharField(max_length=255, null=True, blank=True)
@@ -175,5 +229,78 @@ class Subscription(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    def publication_access_active(self):
+        now = timezone.now()
+
+        if self.status == self.Status.ACTIVE:
+            return self.current_period_end is None or self.current_period_end >= now
+
+        if self.status == self.Status.TRIALING:
+            return self.trial_end is None or self.trial_end >= now
+
+        if self.status == self.Status.CANCELED:
+            return self.current_period_end is not None and self.current_period_end >= now
+
+        return False
+
     def __str__(self):
         return f"{self.organisation.slug} - {self.status}"
+
+
+class NotificationDispatch(models.Model):
+    EVENT_PUBLICATION_PUBLISHED = "publication_published"
+    EVENT_CHOICES = (
+        (EVENT_PUBLICATION_PUBLISHED, "Publication published"),
+    )
+
+    STATUS_RECORDED = "recorded"
+    STATUS_SENT = "sent"
+    STATUS_FAILED = "failed"
+    STATUS_CHOICES = (
+        (STATUS_RECORDED, "Recorded"),
+        (STATUS_SENT, "Sent"),
+        (STATUS_FAILED, "Failed"),
+    )
+
+    PROVIDER_INTERNAL = "internal"
+    PROVIDER_CHOICES = (
+        (PROVIDER_INTERNAL, "Internal"),
+    )
+
+    organisation = models.ForeignKey(
+        "Organisation",
+        on_delete=models.CASCADE,
+        related_name="notification_dispatches",
+    )
+    publication = models.ForeignKey(
+        "Publication",
+        on_delete=models.CASCADE,
+        related_name="notification_dispatches",
+        null=True,
+        blank=True,
+    )
+    event_type = models.CharField(max_length=50, choices=EVENT_CHOICES)
+    topic = models.CharField(max_length=255)
+    title = models.CharField(max_length=255)
+    body = models.TextField()
+    payload = models.JSONField(default=dict, blank=True)
+    provider = models.CharField(
+        max_length=50,
+        choices=PROVIDER_CHOICES,
+        default=PROVIDER_INTERNAL,
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_RECORDED,
+    )
+    external_message_id = models.CharField(max_length=255, blank=True)
+    last_error = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    delivered_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+
+    def __str__(self):
+        return f"{self.organisation.slug} - {self.event_type} - {self.status}"

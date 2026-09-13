@@ -1,7 +1,15 @@
 from django.contrib import admin
 from django.utils.html import format_html
 
-from .models import Organisation, Publication, Membership, PublicationAttachment
+from .models import (
+    Membership,
+    MembershipInvitationInterest,
+    NotificationDispatch,
+    Organisation,
+    Publication,
+    PublicationAttachment,
+    Subscription,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -30,11 +38,12 @@ class OrganisationAdmin(admin.ModelAdmin):
         "email",
         "telephone",
         "date_creation",
+        "badge_subscription_status",
         "badge_nb_publications",
     )
 
     search_fields = ("nom", "ville", "email")
-    list_filter = ("pays", "date_creation", "created_by")
+    list_filter = ("pays", "date_creation", "created_by", "subscription__status")
     ordering = ("nom",)
 
     prepopulated_fields = {"slug": ("nom",)}
@@ -54,6 +63,18 @@ class OrganisationAdmin(admin.ModelAdmin):
         return badge(str(count), color)
 
     badge_nb_publications.short_description = "Publications"
+
+    def badge_subscription_status(self, obj):
+        subscription = getattr(obj, "subscription", None)
+        if not subscription:
+            return badge("Aucun", "gray")
+        if subscription.status == Subscription.Status.ACTIVE:
+            return badge("Actif", "#28a745")
+        if subscription.status == Subscription.Status.CANCELED:
+            return badge("Résilié", "#fd7e14")
+        return badge("Essai", "#6f42c1")
+
+    badge_subscription_status.short_description = "Abonnement"
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
@@ -132,3 +153,115 @@ class MembershipAdmin(admin.ModelAdmin):
     list_filter = ("role", "organisation")
     search_fields = ("user__email", "organisation__nom")
     ordering = ("organisation", "user")
+
+
+@admin.register(MembershipInvitationInterest)
+class MembershipInvitationInterestAdmin(admin.ModelAdmin):
+    list_display = (
+        "organisation",
+        "click_count",
+        "last_requested_by",
+        "first_requested_at",
+        "last_requested_at",
+    )
+    search_fields = ("organisation__nom", "organisation__slug", "last_requested_by__email")
+    ordering = ("-last_requested_at",)
+
+
+@admin.register(Subscription)
+class SubscriptionAdmin(admin.ModelAdmin):
+    list_display = (
+        "organisation",
+        "status_badge",
+        "trial_end",
+        "current_period_end",
+        "stripe_customer_id",
+        "stripe_subscription_id",
+        "updated_at",
+    )
+    list_filter = ("status", "updated_at")
+    search_fields = (
+        "organisation__nom",
+        "organisation__slug",
+        "stripe_customer_id",
+        "stripe_subscription_id",
+    )
+    ordering = ("organisation__nom",)
+    readonly_fields = ("created_at", "updated_at")
+    fieldsets = (
+        (
+            "Abonnement",
+            {
+                "fields": (
+                    "organisation",
+                    "status",
+                    "trial_end",
+                    "current_period_end",
+                )
+            },
+        ),
+        (
+            "Stripe",
+            {
+                "fields": (
+                    "stripe_customer_id",
+                    "stripe_subscription_id",
+                )
+            },
+        ),
+        ("Dates", {"fields": ("created_at", "updated_at")}),
+    )
+
+    def status_badge(self, obj):
+        if obj.status == Subscription.Status.ACTIVE:
+            return badge("Actif", "#28a745")
+        if obj.status == Subscription.Status.CANCELED:
+            return badge("Résilié", "#fd7e14")
+        return badge("Essai", "#6f42c1")
+
+
+@admin.register(NotificationDispatch)
+class NotificationDispatchAdmin(admin.ModelAdmin):
+    list_display = (
+        "organisation",
+        "event_type",
+        "topic",
+        "status_badge",
+        "provider",
+        "created_at",
+    )
+    list_filter = ("event_type", "status", "provider", "created_at")
+    search_fields = (
+        "organisation__nom",
+        "organisation__slug",
+        "topic",
+        "title",
+        "body",
+    )
+    ordering = ("-created_at",)
+    readonly_fields = (
+        "organisation",
+        "publication",
+        "event_type",
+        "topic",
+        "title",
+        "body",
+        "payload",
+        "provider",
+        "status",
+        "external_message_id",
+        "last_error",
+        "created_at",
+        "delivered_at",
+    )
+
+    def status_badge(self, obj):
+        if obj.status == NotificationDispatch.STATUS_SENT:
+            return badge("Envoyé", "#28a745")
+        if obj.status == NotificationDispatch.STATUS_FAILED:
+            return badge("Échec", "#dc3545")
+        return badge("Enregistré", "#6f42c1")
+
+    status_badge.short_description = "Statut"
+
+    status_badge.short_description = "Statut"

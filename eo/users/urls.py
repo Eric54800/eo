@@ -1,4 +1,5 @@
 from django.urls import path
+from .views import MeView
 from rest_framework_simplejwt.views import TokenRefreshView
 from .views import (
     UserListCreateView,
@@ -14,4 +15,6 @@ urlpatterns = [
     # JWT login + refresh
     path("login/", EmailTokenObtainPairView.as_view(), name="jwt-login"),
     path("refresh/", TokenRefreshView.as_view(), name="jwt-refresh"),
+    path("me/", MeView.as_view(), name="user-me"),
+
 ]

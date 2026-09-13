@@ -8,6 +8,7 @@ __pycache__/
 # Virtualenv
 env/
 .venv/
+env_broken/
 
 # Django
 db.sqlite3
@@ -17,9 +18,14 @@ media/
 pj*.txt
 test*.txt
 test.exe
+sauvegarde_locale_eo.txt
 
 # Front / builds locaux
 eo-web/
+
+# Verrous dupliques crees par des copies locales
+eo-mobile/package-lock 2.json
+eo-mobile/package-lock 3.json
 
 # IDE
 .vscode/

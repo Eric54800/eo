@@ -6,22 +6,28 @@ from django.contrib.auth import get_user_model
 
 from django_filters.rest_framework import DjangoFilterBackend
 
-from rest_framework import viewsets, permissions, status
+from rest_framework import mixins, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.filters import OrderingFilter, SearchFilter
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from .models import (
     Organisation,
+    OrganisationPublicDocument,
     Publication,
     Membership,
+    MembershipInvitationInterest,
     PublicationAttachment,
     Subscription,
 )
 from .serializers import (
     OrganisationSerializer,
+    OrganisationPublicDocumentSerializer,
+    OrganisationPublicSerializer,
+    PublicPublicationDetailSerializer,
     PublicationSerializer,
     PublicationListSerializer,
     PublicationAttachmentSerializer,
@@ -30,6 +36,7 @@ from .serializers import (
     SubscriptionSerializer,
 )
 from .permissions import IsOrganisationAdmin
+from .services.notifications import record_publication_published_dispatch
 
 User = get_user_model()
 
@@ -41,6 +48,7 @@ class OrganisationViewSet(viewsets.ModelViewSet):
     serializer_class = OrganisationSerializer
     permission_classes = [permissions.IsAuthenticated]
     lookup_field = "slug"
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
 
     def get_queryset(self):
         # Un utilisateur ne voit que ses organisations
@@ -67,6 +75,55 @@ class OrganisationViewSet(viewsets.ModelViewSet):
             },
         )
 
+    @action(
+        detail=True,
+        methods=["get", "post", "delete"],
+        url_path="public-documents",
+        parser_classes=[MultiPartParser, FormParser],
+    )
+    def public_documents(self, request, slug=None):
+        org = self.get_object()
+
+        if request.method.lower() == "get":
+            qs = org.public_documents.all().order_by("-created_at")
+            ser = OrganisationPublicDocumentSerializer(
+                qs, many=True, context={"request": request}
+            )
+            return Response(ser.data, status=status.HTTP_200_OK)
+
+        if not IsOrganisationAdmin().has_object_permission(request, self, org):
+            raise PermissionDenied("Vous n'avez pas les droits pour modifier la page publique.")
+
+        if request.method.lower() == "post":
+            ser = OrganisationPublicDocumentSerializer(
+                data={
+                    "organisation": org.id,
+                    "display_name": request.data.get("display_name", ""),
+                    "file": request.data.get("file"),
+                },
+                context={"request": request},
+            )
+            ser.is_valid(raise_exception=True)
+            ser.save()
+            return Response(ser.data, status=status.HTTP_201_CREATED)
+
+        document_id = request.query_params.get("document_id")
+        if not document_id:
+            return Response(
+                {"detail": "document_id est requis (query param)."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        document = org.public_documents.filter(id=document_id).first()
+        if not document:
+            return Response(
+                {"detail": "Document public introuvable pour cette organisation."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        document.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
     @action(detail=True, methods=["get", "patch"], url_path="subscription")
     def subscription(self, request, slug=None):
         org = self.get_object()
@@ -86,6 +143,34 @@ class OrganisationViewSet(viewsets.ModelViewSet):
         serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    @action(detail=True, methods=["post"], url_path="member-invitation-interest")
+    def member_invitation_interest(self, request, slug=None):
+        org = self.get_object()
+
+        if not IsOrganisationAdmin().has_object_permission(request, self, org):
+            raise PermissionDenied(
+                "Vous n'avez pas les droits pour gérer les membres de cette structure."
+            )
+
+        interest, _ = MembershipInvitationInterest.objects.get_or_create(
+            organisation=org,
+            defaults={
+                "click_count": 0,
+                "last_requested_by": request.user,
+            },
+        )
+        interest.click_count += 1
+        interest.last_requested_by = request.user
+        interest.save(update_fields=["click_count", "last_requested_by", "last_requested_at"])
+
+        return Response(
+            {
+                "detail": "Le module d'invitation est en cours de développement. Votre intérêt a bien été pris en compte.",
+                "click_count": interest.click_count,
+            },
+            status=status.HTTP_200_OK,
+        )
+
 
 # -------------------------------------------------------
 # Publications
@@ -99,6 +184,9 @@ class PublicationViewSet(viewsets.ModelViewSet):
     ordering = ["-date_publication"]
     search_fields = ["titre", "contenu", "event_location"]
 
+    def _get_org_subscription(self, organisation):
+        return Subscription.objects.filter(organisation=organisation).first()
+
     def get_queryset(self):
         user = self.request.user
 
@@ -107,10 +195,6 @@ class PublicationViewSet(viewsets.ModelViewSet):
             .select_related("organisation")
             .distinct()
         )
-
-        # Member (non staff/superuser) -> seulement published
-        if not user.is_staff and not user.is_superuser:
-            qs = qs.filter(status=Publication.STATUS_PUBLISHED)
 
         return qs.order_by("-date_publication")
 
@@ -155,7 +239,38 @@ class PublicationViewSet(viewsets.ModelViewSet):
         ).exists():
             raise PermissionDenied("Vous n'avez pas les droits pour publier dans cette organisation.")
 
-        serializer.save(organisation=org, created_by=user)
+        target_status = serializer.validated_data.get("status", Publication.STATUS_DRAFT)
+        subscription = self._get_org_subscription(org)
+        if target_status == Publication.STATUS_PUBLISHED and (
+            subscription is None or not subscription.publication_access_active()
+        ):
+            raise PermissionDenied(
+                "Votre essai ou votre abonnement ne vous permet plus de publier. Vous pouvez encore enregistrer un brouillon."
+            )
+
+        publication = serializer.save(organisation=org)
+        if publication.status == Publication.STATUS_PUBLISHED:
+            record_publication_published_dispatch(publication)
+
+    def perform_update(self, serializer):
+        publication = self.get_object()
+        previous_status = publication.status
+        target_status = serializer.validated_data.get("status", publication.status)
+        subscription = self._get_org_subscription(publication.organisation)
+
+        if target_status == Publication.STATUS_PUBLISHED and (
+            subscription is None or not subscription.publication_access_active()
+        ):
+            raise PermissionDenied(
+                "Votre essai ou votre abonnement ne vous permet plus de publier. Vous pouvez encore enregistrer un brouillon."
+            )
+
+        publication = serializer.save()
+        if (
+            previous_status != Publication.STATUS_PUBLISHED
+            and publication.status == Publication.STATUS_PUBLISHED
+        ):
+            record_publication_published_dispatch(publication)
 
     @action(
         detail=True,
@@ -304,6 +419,41 @@ class MembershipViewSet(viewsets.ModelViewSet):
             return [permissions.IsAuthenticated()]
         return [permissions.IsAuthenticated(), IsOrganisationAdmin()]
 
+    def _can_manage_organisation(self, user, organisation) -> bool:
+        if user.is_staff or user.is_superuser:
+            return True
+        return organisation.memberships.filter(
+            user=user,
+            role__in=["owner", "admin"],
+        ).exists()
+
+    def _validate_role_change(self, request, membership, next_role: str):
+        if next_role == "owner":
+            raise PermissionDenied(
+                "Le rôle propriétaire est réservé à la création de la structure."
+            )
+
+        if membership.role == "owner":
+            raise PermissionDenied(
+                "Le propriétaire ne peut pas être modifié depuis la gestion des membres."
+            )
+
+        if not self._can_manage_organisation(request.user, membership.organisation):
+            raise PermissionDenied(
+                "Vous n'avez pas les droits pour modifier ce membre."
+            )
+
+    def _validate_delete(self, request, membership):
+        if membership.role == "owner":
+            raise PermissionDenied(
+                "Le propriétaire ne peut pas être retiré depuis la gestion des membres."
+            )
+
+        if not self._can_manage_organisation(request.user, membership.organisation):
+            raise PermissionDenied(
+                "Vous n'avez pas les droits pour retirer ce membre."
+            )
+
     def create(self, request, *args, **kwargs):
         serializer = MembershipInviteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -313,17 +463,19 @@ class MembershipViewSet(viewsets.ModelViewSet):
         organisation_id = request.data.get("organisation")
 
         if not organisation_id:
-            return Response({"detail": "organisation est requis."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "Le champ organisation est requis."}, status=status.HTTP_400_BAD_REQUEST)
 
         organisation = Organisation.objects.filter(id=organisation_id).first()
         if not organisation:
             return Response({"detail": "Organisation introuvable."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Vérifie droits (admin/owner) sur l'orga cible
-        if not (request.user.is_staff or request.user.is_superuser) and not organisation.memberships.filter(
-            user=request.user, role__in=["owner", "admin"]
-        ).exists():
+        if not self._can_manage_organisation(request.user, organisation):
             raise PermissionDenied("Vous n'avez pas les droits pour inviter un membre.")
+
+        if role == "owner":
+            raise PermissionDenied(
+                "Le rôle propriétaire est réservé à la création de la structure."
+            )
 
         target = User.objects.filter(email__iexact=email).first()
         if not target:
@@ -344,6 +496,16 @@ class MembershipViewSet(viewsets.ModelViewSet):
             status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
         )
 
+    def perform_update(self, serializer):
+        membership = self.get_object()
+        next_role = serializer.validated_data.get("role", membership.role)
+        self._validate_role_change(self.request, membership, next_role)
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        self._validate_delete(self.request, instance)
+        instance.delete()
+
 
 # -------------------------------------------------------
 # Subscriptions (read-only)
@@ -356,3 +518,51 @@ class SubscriptionViewSet(viewsets.ReadOnlyModelViewSet):
         return Subscription.objects.filter(
             organisation__memberships__user=self.request.user
         ).select_related("organisation")
+
+
+# -------------------------------------------------------
+# API publique (sans auth)
+# -------------------------------------------------------
+class PublicOrganisationViewSet(
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    viewsets.GenericViewSet,
+):
+    permission_classes = [AllowAny]
+    serializer_class = OrganisationPublicSerializer
+    lookup_field = "slug"
+
+    def get_queryset(self):
+        return Organisation.objects.select_related("subscription").order_by("nom")
+
+
+class PublicPublicationViewSet(
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    viewsets.GenericViewSet,
+):
+    permission_classes = [AllowAny]
+    serializer_class = PublicationListSerializer
+
+    def get_queryset(self):
+        qs = Publication.objects.filter(
+            status=Publication.STATUS_PUBLISHED
+        ).select_related(
+            "organisation",
+            "organisation__subscription",
+        ).order_by(
+            "-date_publication",
+            "-id",
+        )
+        slug = (
+            self.request.query_params.get("organisation_slug")
+            or self.request.query_params.get("organisation__slug")
+        )
+        if slug:
+            qs = qs.filter(organisation__slug=slug)
+        return qs
+
+    def get_serializer_class(self):
+        if self.action == "retrieve":
+            return PublicPublicationDetailSerializer
+        return PublicationListSerializer

@@ -1,5 +1,5 @@
 from rest_framework.permissions import BasePermission, SAFE_METHODS
-from .models import Membership
+from .models import Membership, Organisation
 
 
 class IsOrganisationAdmin(BasePermission):
@@ -28,8 +28,12 @@ class IsOrganisationAdmin(BasePermission):
         if user.is_staff or user.is_superuser:
             return True
 
-        # obj doit avoir une organisation (Subscription.organisation, Publication.organisation, etc.)
-        org = getattr(obj, "organisation", None)
+        # L'objet peut être directement une Organisation, ou un objet lié à une organisation.
+        if isinstance(obj, Organisation):
+            org = obj
+        else:
+            org = getattr(obj, "organisation", None)
+
         if org is None:
             return False
 

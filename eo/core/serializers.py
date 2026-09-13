@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 
 from .models import (
     Organisation,
+    OrganisationPublicDocument,
     Publication,
     PublicationAttachment,
     Membership,
@@ -18,6 +19,7 @@ User = get_user_model()
 # ---------------------------------------------------------------------------
 
 class SubscriptionPublicSerializer(serializers.ModelSerializer):
+    publication_access_active = serializers.SerializerMethodField()
     """
     Serializer "public" (embeddé dans Organisation) : pas d'id/organisation
     """
@@ -27,10 +29,16 @@ class SubscriptionPublicSerializer(serializers.ModelSerializer):
             "status",
             "trial_end",
             "current_period_end",
+            "cancel_at_period_end",
+            "cancel_at",
+            "publication_access_active",
             "created_at",
             "updated_at",
         ]
         read_only_fields = fields
+
+    def get_publication_access_active(self, obj):
+        return obj.publication_access_active()
 
 
 class SubscriptionSerializer(serializers.ModelSerializer):
@@ -38,6 +46,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
     Serializer complet (pour /api/subscriptions/)
     """
     organisation = serializers.PrimaryKeyRelatedField(read_only=True)
+    publication_access_active = serializers.SerializerMethodField()
 
     class Meta:
         model = Subscription
@@ -47,6 +56,9 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             "status",
             "trial_end",
             "current_period_end",
+            "cancel_at_period_end",
+            "cancel_at",
+            "publication_access_active",
             "created_at",
             "updated_at",
         ]
@@ -60,6 +72,9 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             )
         return attrs
 
+    def get_publication_access_active(self, obj):
+        return obj.publication_access_active()
+
 
 
 
@@ -69,10 +84,68 @@ class SubscriptionSerializer(serializers.ModelSerializer):
 
 class OrganisationSerializer(serializers.ModelSerializer):
     subscription = SubscriptionPublicSerializer(read_only=True)
+    public_cover_image_url = serializers.SerializerMethodField()
+    public_avatar_image_url = serializers.SerializerMethodField()
+    public_documents = serializers.SerializerMethodField()
+    billing_portal_available = serializers.SerializerMethodField()
 
     class Meta:
         model = Organisation
-        fields = "__all__"
+        fields = [
+            "id",
+            "nom",
+            "slug",
+            "created_by",
+            "adresse",
+            "code_postal",
+            "ville",
+            "pays",
+            "email",
+            "telephone",
+            "presentation",
+            "public_email",
+            "public_image",
+            "public_cover_image",
+            "public_cover_image_url",
+            "public_avatar_image",
+            "public_avatar_image_url",
+            "cover_position_x",
+            "cover_position_y",
+            "horaires",
+            "date_creation",
+            "periode_gratuite_jours",
+            "subscription",
+            "public_documents",
+            "billing_portal_available",
+        ]
+
+    def get_public_cover_image_url(self, obj):
+        request = self.context.get("request")
+        if not obj.public_cover_image:
+            return None
+        if request is not None:
+            return request.build_absolute_uri(obj.public_cover_image.url)
+        return obj.public_cover_image.url
+
+    def get_public_avatar_image_url(self, obj):
+        request = self.context.get("request")
+        if not obj.public_avatar_image:
+            return None
+        if request is not None:
+            return request.build_absolute_uri(obj.public_avatar_image.url)
+        return obj.public_avatar_image.url
+
+    def get_public_documents(self, obj):
+        request = self.context.get("request")
+        return PublicOrganisationDocumentSerializer(
+            obj.public_documents.all().order_by("-created_at"),
+            many=True,
+            context={"request": request},
+        ).data
+
+    def get_billing_portal_available(self, obj):
+        subscription = getattr(obj, "subscription", None)
+        return bool(subscription and subscription.stripe_customer_id)
 
 
 # ---------------------------------------------------------------------------
@@ -85,6 +158,81 @@ class OrganisationMiniSerializer(serializers.ModelSerializer):
     class Meta:
         model = Organisation
         fields = ["id", "nom", "slug", "subscription"]
+
+
+class PublicOrganisationMiniSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Organisation
+        fields = ["id", "nom", "slug"]
+        read_only_fields = fields
+
+
+class OrganisationPublicSerializer(serializers.ModelSerializer):
+    subscription = SubscriptionPublicSerializer(read_only=True)
+    public_cover_image_url = serializers.SerializerMethodField()
+    public_avatar_image_url = serializers.SerializerMethodField()
+    public_documents = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Organisation
+        fields = [
+            "id",
+            "nom",
+            "slug",
+            "adresse",
+            "code_postal",
+            "ville",
+            "pays",
+            "presentation",
+            "public_email",
+            "telephone",
+            "public_cover_image_url",
+            "public_avatar_image_url",
+            "cover_position_x",
+            "cover_position_y",
+            "horaires",
+            "public_documents",
+            "subscription",
+        ]
+        read_only_fields = fields
+
+    def get_public_cover_image_url(self, obj):
+        request = self.context.get("request")
+        if not obj.public_cover_image:
+            return None
+        if request is not None:
+            return request.build_absolute_uri(obj.public_cover_image.url)
+        return obj.public_cover_image.url
+
+    def get_public_avatar_image_url(self, obj):
+        request = self.context.get("request")
+        if not obj.public_avatar_image:
+            return None
+        if request is not None:
+            return request.build_absolute_uri(obj.public_avatar_image.url)
+        return obj.public_avatar_image.url
+
+    def get_public_documents(self, obj):
+        request = self.context.get("request")
+        return PublicOrganisationDocumentSerializer(
+            obj.public_documents.all().order_by("-created_at"),
+            many=True,
+            context={"request": request},
+        ).data
+
+
+class OrganisationPublicDocumentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OrganisationPublicDocument
+        fields = ["id", "organisation", "file", "display_name", "created_at"]
+        read_only_fields = ["id", "created_at"]
+
+
+class PublicOrganisationDocumentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OrganisationPublicDocument
+        fields = ["id", "file", "display_name"]
+        read_only_fields = fields
 
 
 # ---------------------------------------------------------------------------
@@ -106,6 +254,13 @@ class PublicationAttachmentSerializer(serializers.ModelSerializer):
             return 0
 
 
+class PublicPublicationAttachmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PublicationAttachment
+        fields = ["id", "file", "display_name"]
+        read_only_fields = fields
+
+
 # ---------------------------------------------------------------------------
 # SERIALIZER : Publication (LISTE)
 # - léger : organisation mini + preview + count PJ
@@ -115,6 +270,7 @@ class PublicationListSerializer(serializers.ModelSerializer):
     organisation = OrganisationMiniSerializer(read_only=True)
     contenu_preview = serializers.SerializerMethodField()
     attachments_count = serializers.IntegerField(source="attachments.count", read_only=True)
+    attachments = PublicPublicationAttachmentSerializer(many=True, read_only=True)
 
     class Meta:
         model = Publication
@@ -130,6 +286,7 @@ class PublicationListSerializer(serializers.ModelSerializer):
             "event_end",
             "event_location",
             "attachments_count",
+            "attachments",
         ]
         read_only_fields = fields
 
@@ -137,6 +294,28 @@ class PublicationListSerializer(serializers.ModelSerializer):
         if not obj.contenu:
             return ""
         return obj.contenu[:120] + ("…" if len(obj.contenu) > 120 else "")
+
+
+class PublicPublicationDetailSerializer(serializers.ModelSerializer):
+    organisation = PublicOrganisationMiniSerializer(read_only=True)
+    attachments = PublicPublicationAttachmentSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Publication
+        fields = [
+            "id",
+            "organisation",
+            "type",
+            "status",
+            "titre",
+            "contenu",
+            "date_publication",
+            "event_start",
+            "event_end",
+            "event_location",
+            "attachments",
+        ]
+        read_only_fields = fields
 
 
 # ---------------------------------------------------------------------------
@@ -212,7 +391,14 @@ class MembershipSerializer(serializers.ModelSerializer):
             "role",
             "created_at",
         ]
-        read_only_fields = ["id", "created_at", "user_email", "organisation_slug"]
+        read_only_fields = [
+            "id",
+            "organisation",
+            "user",
+            "created_at",
+            "user_email",
+            "organisation_slug",
+        ]
 
 
 # ---------------------------------------------------------------------------
