@@ -7,7 +7,7 @@ Ce dépôt contient l’API Django. L’interface web est un dépôt Git distinc
 - Python 3.12.12 avec OpenSSL 3.6.1
 - Node.js 18.20.8
 - npm 10.8.2
-- Django 4.2.x
+- Django 5.2 LTS
 - Next.js 14.2.x
 
 Python 3.12.12 est la référence du projet, enregistrée dans `.python-version`. L’ancien environnement Python 3.9 peut être conservé temporairement pour retour arrière, mais ne doit plus servir au développement ni à la future production.
@@ -65,10 +65,18 @@ Le prototype utilise actuellement :
 
 Ces deux éléments sont exclus de Git et doivent toujours être sauvegardés ensemble. La sauvegarde de référence EO-01 du 14 septembre 2026 se trouve hors du dépôt dans `Documents/50_EO/03_Backups/2026-09-14_EO-01/`.
 
+En l’absence de `DATABASE_URL`, Django conserve automatiquement SQLite. Pour utiliser PostgreSQL, renseigner une URL complète dans `.env`, idéalement fournie par l’hébergeur :
+
+```text
+DATABASE_URL=postgresql://utilisateur:mot-de-passe@serveur:5432/base?sslmode=require
+```
+
+`DB_CONN_MAX_AGE` contrôle la durée de réutilisation des connexions, en secondes. Sa valeur par défaut est 60.
+
 Une restauration n’est considérée comme validée qu’après contrôle d’intégrité de la base, extraction des médias dans un dossier vide, démarrage de Django sur la copie restaurée et vérification d’une source, d’une criée et d’un document.
 
 ## Limites connues
 
-- SQLite et le stockage local des médias conviennent au prototype, pas à la production visée.
+- SQLite reste le mode local par défaut. Le code accepte désormais PostgreSQL, mais aucune base PostgreSQL de préproduction ni migration réelle des données n’a encore été validée.
 - Les paramètres de sécurité de production, PostgreSQL, le stockage objet et les sauvegardes automatiques restent à réaliser dans EO-02.
 - Les abonnements Web Push créés sur une adresse TryCloudflare ne seront pas transférés automatiquement au domaine définitif.

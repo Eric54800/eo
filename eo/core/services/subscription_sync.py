@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
-
-from django.utils import timezone
+from datetime import datetime, timezone
 
 from core.models import Organisation, Subscription
 
