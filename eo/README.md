@@ -80,3 +80,8 @@ Une restauration n’est considérée comme validée qu’après contrôle d’i
 - SQLite reste le mode local par défaut. Le code accepte désormais PostgreSQL, mais aucune base PostgreSQL de préproduction ni migration réelle des données n’a encore été validée.
 - Les paramètres de sécurité de production, PostgreSQL, le stockage objet et les sauvegardes automatiques restent à réaliser dans EO-02.
 - Les abonnements Web Push créés sur une adresse TryCloudflare ne seront pas transférés automatiquement au domaine définitif.
+
+## Futur hébergement
+
+La préparation technique et la procédure volontairement non exécutée sont décrites dans
+[`docs/hebergement-scalingo.md`](docs/hebergement-scalingo.md).

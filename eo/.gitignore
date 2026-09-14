@@ -13,6 +13,7 @@ env_broken/
 # Django
 db.sqlite3
 media/
+staticfiles/
 
 # Fichiers de test locaux
 pj*.txt

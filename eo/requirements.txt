@@ -1,12 +1,16 @@
 asgiref==3.8.1
 Django>=5.2,<5.3
+boto3>=1.35,<2.0
 dj-database-url>=2.2,<4.0
 django-filter==25.1
+django-storages[s3]>=1.14,<2.0
 djangorestframework==3.15.2
 djangorestframework-simplejwt==5.3.1
+gunicorn>=23,<24
 Pillow==11.3.0
 PyJWT==2.8.0
 psycopg[binary]>=3.2,<4.0
 sqlparse==0.5.1
 stripe==11.6.0
 pywebpush==2.0.3
+whitenoise>=6.8,<7.0

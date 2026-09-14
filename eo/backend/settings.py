@@ -14,6 +14,7 @@ import os
 from pathlib import Path
 
 import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -31,10 +32,25 @@ SECRET_KEY = os.getenv(
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG", "true").lower() == "true"
 
+if not DEBUG and (
+    SECRET_KEY.startswith("django-insecure-")
+    or SECRET_KEY == "replace-me"
+    or len(SECRET_KEY) < 50
+):
+    raise ImproperlyConfigured(
+        "DJANGO_SECRET_KEY doit etre definie avec une valeur secrete hors developpement."
+    )
+
 ALLOWED_HOSTS = [
     host.strip()
     for host in os.getenv("ALLOWED_HOSTS", "127.0.0.1,localhost,testserver").split(",")
     if host.strip()
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",")
+    if origin.strip()
 ]
 
 # Le site Next.js relaie le domaine HTTPS public vers l'API Django locale.
@@ -70,6 +86,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -155,7 +172,17 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
@@ -164,6 +191,52 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 AUTH_USER_MODEL = 'users.User'
+
+USE_S3_STORAGE = os.getenv("USE_S3_STORAGE", "false").lower() in (
+    "1",
+    "true",
+    "yes",
+)
+
+if USE_S3_STORAGE:
+    required_s3_settings = {
+        "S3_BUCKET_NAME": os.getenv("S3_BUCKET_NAME", "").strip(),
+        "S3_ACCESS_KEY_ID": os.getenv("S3_ACCESS_KEY_ID", "").strip(),
+        "S3_SECRET_ACCESS_KEY": os.getenv("S3_SECRET_ACCESS_KEY", "").strip(),
+    }
+    missing_s3_settings = [
+        name for name, value in required_s3_settings.items() if not value
+    ]
+    if missing_s3_settings:
+        raise ImproperlyConfigured(
+            "Variables S3 manquantes: " + ", ".join(missing_s3_settings)
+        )
+
+    s3_options = {
+        "bucket_name": required_s3_settings["S3_BUCKET_NAME"],
+        "access_key": required_s3_settings["S3_ACCESS_KEY_ID"],
+        "secret_key": required_s3_settings["S3_SECRET_ACCESS_KEY"],
+        "endpoint_url": os.getenv("S3_ENDPOINT_URL", "").strip() or None,
+        "region_name": os.getenv("S3_REGION_NAME", "").strip() or None,
+        "custom_domain": os.getenv("S3_CUSTOM_DOMAIN", "").strip() or None,
+        "default_acl": None,
+        "file_overwrite": False,
+        "querystring_auth": os.getenv("S3_QUERYSTRING_AUTH", "true").lower()
+        in ("1", "true", "yes"),
+    }
+    STORAGES["default"] = {
+        "BACKEND": "storages.backends.s3.S3Storage",
+        "OPTIONS": {key: value for key, value in s3_options.items() if value is not None},
+    }
+
+SECURE_SSL_REDIRECT = os.getenv("SECURE_SSL_REDIRECT", str(not DEBUG)).lower() in (
+    "1",
+    "true",
+    "yes",
+)
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "0"))
 
 from datetime import timedelta
 
