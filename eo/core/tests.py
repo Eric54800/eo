@@ -2,6 +2,7 @@ from datetime import timedelta
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
@@ -12,6 +13,7 @@ from core.models import (
     NotificationDispatch,
     Organisation,
     Publication,
+    PublicationAttachment,
     Subscription,
     WebPushSubscription,
 )
@@ -166,6 +168,46 @@ class StructureWorkflowTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 404)
+
+    def test_public_attachment_is_exposed_as_a_safe_download(self):
+        attachment = PublicationAttachment.objects.create(
+            publication=self.published_publication,
+            display_name="Bulletin paroissial",
+            file=SimpleUploadedFile(
+                "bulletin.html",
+                b"<script>alert('unsafe')</script>",
+                content_type="text/html",
+            ),
+        )
+        client = self.make_client()
+
+        publication_response = client.get(
+            f"/api/public/publications/{self.published_publication.id}/"
+        )
+        file_url = publication_response.data["attachments"][0]["file"]
+        response = client.get(file_url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("attachment", response["Content-Disposition"])
+        self.assertIn("bulletin", response["Content-Disposition"])
+        self.assertEqual(response["X-Content-Type-Options"], "nosniff")
+        self.assertEqual(b"".join(response.streaming_content), b"<script>alert('unsafe')</script>")
+        attachment.file.delete(save=False)
+
+    def test_public_attachment_from_draft_is_not_accessible(self):
+        attachment = PublicationAttachment.objects.create(
+            publication=self.draft_publication,
+            display_name="Brouillon",
+            file=SimpleUploadedFile("brouillon.txt", b"Prive"),
+        )
+        client = self.make_client()
+
+        response = client.get(
+            f"/api/public/attachments/{attachment.id}/file/"
+        )
+
+        self.assertEqual(response.status_code, 404)
+        attachment.file.delete(save=False)
 
     def test_owner_cannot_be_modified_through_memberships_api(self):
         client = self.make_client(self.owner)

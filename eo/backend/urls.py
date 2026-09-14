@@ -10,6 +10,7 @@ from core.billing_views import (
     StripeWebhookView,
 )
 from core.push_views import PublicWebPushSubscriptionView
+from core.public_files import public_publication_attachment_file
 from core.views import (
     OrganisationViewSet,
     PublicationViewSet,
@@ -52,6 +53,11 @@ urlpatterns = [
         "api/public/push-subscriptions",
         PublicWebPushSubscriptionView.as_view(),
         name="public-web-push-subscriptions-no-slash",
+    ),
+    path(
+        "api/public/attachments/<int:attachment_id>/file/",
+        public_publication_attachment_file,
+        name="public-publication-attachment-file",
     ),
     path("api/", include(router.urls)),
 ]

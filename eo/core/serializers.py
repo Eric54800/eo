@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from django.urls import reverse
 
 from .models import (
     Organisation,
@@ -255,10 +256,17 @@ class PublicationAttachmentSerializer(serializers.ModelSerializer):
 
 
 class PublicPublicationAttachmentSerializer(serializers.ModelSerializer):
+    file = serializers.SerializerMethodField()
+
     class Meta:
         model = PublicationAttachment
         fields = ["id", "file", "display_name"]
         read_only_fields = fields
+
+    def get_file(self, obj):
+        request = self.context.get("request")
+        path = reverse("public-publication-attachment-file", args=[obj.pk])
+        return request.build_absolute_uri(path) if request else path
 
 
 # ---------------------------------------------------------------------------
