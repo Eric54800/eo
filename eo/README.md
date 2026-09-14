@@ -4,21 +4,21 @@ Ce dépôt contient l’API Django. L’interface web est un dépôt Git distinc
 
 ## Versions vérifiées le 14 septembre 2026
 
-- Python 3.9.6
+- Python 3.12.12 avec OpenSSL 3.6.1
 - Node.js 18.20.8
 - npm 10.8.2
 - Django 4.2.x
 - Next.js 14.2.x
 
-Ces versions décrivent le prototype local actuel. Elles ne constituent pas encore la cible de production. Python 3.9 avec LibreSSL produit notamment un avertissement `urllib3` ; l’environnement de production devra utiliser une version maintenue de Python liée à OpenSSL.
+Python 3.12.12 est la référence du projet, enregistrée dans `.python-version`. L’ancien environnement Python 3.9 peut être conservé temporairement pour retour arrière, mais ne doit plus servir au développement ni à la future production.
 
 ## API Django
 
 Depuis la racine du dépôt :
 
 ```sh
-python3 -m venv env
-source env/bin/activate
+python3.12 -m venv .venv
+source .venv/bin/activate
 python -m pip install -r requirements.txt
 cp .env.example .env
 set -a
